@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Live FIFA scores and match timelines" />
+    <title>Matchwire | FIFA Live Blog</title>
+    <link rel="preconnect" href="https://api.fifa.com" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark">M</span>
+        <span>Matchwire</span>
+      </a>
+      <div class="refresh-state">
+        <span class="pulse"></span>
+        <span id="refresh-label">Connecting to FIFA</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <p class="eyebrow">FIFA Match Centre</p>
+        <h1>Every moment,<br /><em>as it happens.</em></h1>
+        <p class="intro-copy">Live scores and official event timelines, refreshed automatically.</p>
+      </section>
+
+      <section class="match-strip" aria-label="Matches">
+        <div class="section-title">
+          <div>
+            <span class="live-dot"></span>
+            <h2>Live &amp; recent</h2>
+          </div>
+          <span id="match-count">Loading matches...</span>
+        </div>
+        <div id="matches" class="match-list"></div>
+      </section>
+
+      <section class="overview today-overview">
+        <div class="overview-section">
+          <div class="overview-title">
+            <p class="eyebrow">Coming up</p>
+            <h2>Today's matches</h2>
+          </div>
+          <div id="upcoming" class="upcoming-list"></div>
+        </div>
+      </section>
+
+      <section id="match-view" class="match-view hidden">
+        <div id="scoreboard" class="scoreboard"></div>
+        <button id="timeline-toggle" class="timeline-toggle" type="button" aria-expanded="false">
+          <span>Show live blog</span>
+          <b>↓</b>
+        </button>
+        <div id="feed-layout" class="feed-layout hidden">
+          <aside class="feed-heading">
+            <p class="eyebrow">Live blog</p>
+            <h2>Match<br />timeline</h2>
+            <p id="event-count"></p>
+            <a id="fifa-link" class="fifa-link" target="_blank" rel="noreferrer">Open on FIFA ↗</a>
+          </aside>
+          <div>
+            <div id="feed-error" class="notice hidden"></div>
+            <ol id="timeline" class="timeline"></ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="overview">
+        <div class="overview-section">
+          <div class="overview-title">
+            <p class="eyebrow">Tournament</p>
+            <h2>Group tables</h2>
+          </div>
+          <div id="groups" class="groups"></div>
+        </div>
+      </section>
+
+      <section id="empty" class="empty hidden">
+        <p class="eyebrow">No matches found</p>
+        <h2>Waiting for kickoff.</h2>
+        <p>The app will check FIFA again automatically.</p>
+      </section>
+    </main>
+
+    <footer>
+      <span>Matchwire</span>
+      <span>Data sourced from FIFA's public match APIs</span>
+    </footer>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
