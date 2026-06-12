@@ -199,31 +199,16 @@ async function discoverMatches(competitionId) {
     .sort((a, b) => Number(b.isLive) - Number(a.isLive) || Date.parse(b.date) - Date.parse(a.date));
 }
 
-function dateInTimeZone(date, timeZone) {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(new Date(date));
-    const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return `${value.year}-${value.month}-${value.day}`;
-  } catch {
-    return new Date(date).toISOString().slice(0, 10);
-  }
-}
-
-async function upcomingMatches(calendar, competitionId, matchDate, timeZone) {
+async function upcomingMatches(calendar, competitionId) {
   const matches = (calendar.Results || [])
     .filter(
       (match) =>
         String(match.IdCompetition) === competitionId &&
         Number(match.MatchStatus) === 1 &&
-        Date.parse(match.Date) > Date.now() &&
-        dateInTimeZone(match.Date, timeZone) === matchDate,
+        Date.parse(match.Date) > Date.now(),
     )
-    .sort((a, b) => Date.parse(a.Date) - Date.parse(b.Date));
+    .sort((a, b) => Date.parse(a.Date) - Date.parse(b.Date))
+    .slice(0, 8);
 
   const details = [];
   for (let index = 0; index < matches.length; index += 4) {
@@ -291,12 +276,12 @@ async function apiMatches(res, competitionId) {
   json(res, 200, { updatedAt: new Date().toISOString(), matches });
 }
 
-async function apiOverview(res, competitionId, matchDate, timeZone) {
+async function apiOverview(res, competitionId) {
   const calendar = await calendarMatches(60_000);
   const competitions = competitionList(calendar.Results);
   const selected = competitions.find((competition) => competition.id === competitionId);
   const [upcoming, groups] = await Promise.all([
-    upcomingMatches(calendar, competitionId, matchDate, timeZone),
+    upcomingMatches(calendar, competitionId),
     groupStandings(selected),
   ]);
   json(res, 200, { updatedAt: new Date().toISOString(), competitions, upcoming, groups });
@@ -361,18 +346,12 @@ const server = http.createServer(async (req, res) => {
   const competitionId = /^[a-zA-Z0-9-]+$/.test(url.searchParams.get("competitionId") || "")
     ? url.searchParams.get("competitionId")
     : DEFAULT_COMPETITION_ID;
-  const matchDate = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get("matchDate") || "")
-    ? url.searchParams.get("matchDate")
-    : new Date().toISOString().slice(0, 10);
-  const timeZone = url.searchParams.get("timeZone") || "UTC";
   try {
     if (url.pathname === "/api/health") {
       return json(res, 200, { status: "ok", time: new Date().toISOString() });
     }
     if (url.pathname === "/api/matches") return await apiMatches(res, competitionId);
-    if (url.pathname === "/api/overview") {
-      return await apiOverview(res, competitionId, matchDate, timeZone);
-    }
+    if (url.pathname === "/api/overview") return await apiOverview(res, competitionId);
     if (url.pathname.startsWith("/api/timeline/")) {
       return await apiTimeline(res, url.pathname.split("/").pop());
     }

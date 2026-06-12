@@ -149,8 +149,18 @@ function renderTimeline() {
 }
 
 function renderOverview() {
-  elements.upcoming.innerHTML = state.upcoming.length
-    ? state.upcoming
+  const now = new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+  const todaysMatches = state.upcoming.filter(
+    (match) => (match.localDate || match.date || "").slice(0, 10) === today,
+  );
+
+  elements.upcoming.innerHTML = todaysMatches.length
+    ? todaysMatches
     .map((match) => `
       <article class="upcoming-card">
         <div><span>${escapeHtml(match.group || match.stage)}</span><time>${new Date(match.date).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</time></div>
@@ -310,14 +320,7 @@ elements.squadModal.addEventListener("click", (event) => {
 async function refresh() {
   elements.refreshLabel.textContent = "Refreshing FIFA data";
   try {
-    const now = new Date();
-    const matchDate = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, "0"),
-      String(now.getDate()).padStart(2, "0"),
-    ].join("-");
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    const query = `?competitionId=${encodeURIComponent(state.competitionId)}&matchDate=${matchDate}&timeZone=${encodeURIComponent(timeZone)}`;
+    const query = `?competitionId=${encodeURIComponent(state.competitionId)}`;
     const [matchResponse, overviewResponse] = await Promise.all([
       fetch(`/api/matches${query}`),
       fetch(`/api/overview${query}`),
