@@ -119,6 +119,16 @@ h1 em {
   color: #939a96;
   font: 10px "DM Mono", monospace;
 }
+.match-controls { align-items: center; display: flex; gap: 10px; }
+.match-controls label { color: #939a96; font: 9px "DM Mono", monospace; text-transform: uppercase; }
+.match-controls select {
+  background: #1b211f;
+  border: 1px solid #4a534f;
+  color: white;
+  font: 10px "DM Mono", monospace;
+  max-width: 230px;
+  padding: 8px 10px;
+}
 .match-list {
   display: grid;
   gap: 12px;

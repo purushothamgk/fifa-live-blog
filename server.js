@@ -16,6 +16,7 @@ const SEED_MATCHES = [
 const ACTIVE_PERIODS = new Set([3, 4, 5, 6, 7, 8, 9, 11]);
 const cache = new Map();
 const TOURNAMENT = SEED_MATCHES[0];
+const DEFAULT_COMPETITION_ID = TOURNAMENT.competitionId;
 
 function localized(value, fallback = "") {
   if (!Array.isArray(value)) return fallback;
@@ -110,16 +111,41 @@ async function matchDetails(ref) {
   return fifa(pathname);
 }
 
-async function discoverMatches() {
+function competitionList(results) {
+  const competitions = new Map();
+  for (const match of results || []) {
+    const id = String(match.IdCompetition);
+    if (!competitions.has(id)) {
+      competitions.set(id, {
+        id,
+        name: localized(match.CompetitionName, "Competition"),
+        seasonId: String(match.IdSeason),
+        stageId: String(match.IdStage),
+      });
+    }
+  }
+  return [...competitions.values()].sort((a, b) => {
+    if (a.id === DEFAULT_COMPETITION_ID) return -1;
+    if (b.id === DEFAULT_COMPETITION_ID) return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+async function calendarMatches(maxAgeMs = 30_000) {
   const from = new Date(Date.now() - 6 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
-  const calendar = await fifa(
+  return fifa(
     `/calendar/matches?language=en&count=500&from=${from}`,
-    30_000,
+    maxAgeMs,
   );
+}
+
+async function discoverMatches(competitionId) {
+  const calendar = await calendarMatches();
   const now = Date.now();
   const refs = (calendar.Results || [])
+    .filter((match) => String(match.IdCompetition) === competitionId)
     .filter((match) => {
       const kickoff = Date.parse(match.Date);
       return (
@@ -135,7 +161,7 @@ async function discoverMatches() {
       matchId: String(match.IdMatch),
     }));
 
-  for (const seed of SEED_MATCHES) {
+  for (const seed of SEED_MATCHES.filter((item) => item.competitionId === competitionId)) {
     if (!refs.some((ref) => ref.matchId === seed.matchId)) refs.push(seed);
   }
 
@@ -152,21 +178,20 @@ async function discoverMatches() {
 
   return details
     .map((match) => normalizeMatch(match, "live"))
-    .filter((match) => match.isLive || SEED_MATCHES.some((s) => s.matchId === match.id))
+    .filter(
+      (match) =>
+        match.isLive ||
+        Date.parse(match.date) > now - 6 * 60 * 60 * 1000 ||
+        SEED_MATCHES.some((seed) => seed.matchId === match.id),
+    )
     .sort((a, b) => Number(b.isLive) - Number(a.isLive) || Date.parse(b.date) - Date.parse(a.date));
 }
 
-async function upcomingMatches() {
-  const from = new Date().toISOString().slice(0, 10);
-  const calendar = await fifa(
-    `/calendar/matches?language=en&count=500&from=${from}`,
-    60_000,
-  );
-
+async function upcomingMatches(calendar, competitionId) {
   return (calendar.Results || [])
     .filter(
       (match) =>
-        String(match.IdCompetition) === TOURNAMENT.competitionId &&
+        String(match.IdCompetition) === competitionId &&
         Number(match.MatchStatus) === 1 &&
         Date.parse(match.Date) > Date.now(),
     )
@@ -175,11 +200,17 @@ async function upcomingMatches() {
     .map((match) => normalizeMatch(match, "upcoming"));
 }
 
-async function groupStandings() {
-  const data = await fifa(
-    `/calendar/${TOURNAMENT.competitionId}/${TOURNAMENT.seasonId}/${TOURNAMENT.stageId}/standing?language=en&count=200`,
-    5 * 60_000,
-  );
+async function groupStandings(competition) {
+  if (!competition) return [];
+  let data;
+  try {
+    data = await fifa(
+      `/calendar/${competition.id}/${competition.seasonId}/${competition.stageId}/standing?language=en&count=200`,
+      5 * 60_000,
+    );
+  } catch {
+    return [];
+  }
   const groups = new Map();
 
   for (const row of data.Results || []) {
@@ -207,14 +238,20 @@ async function groupStandings() {
     }));
 }
 
-async function apiMatches(res) {
-  const matches = await discoverMatches();
+async function apiMatches(res, competitionId) {
+  const matches = await discoverMatches(competitionId);
   json(res, 200, { updatedAt: new Date().toISOString(), matches });
 }
 
-async function apiOverview(res) {
-  const [upcoming, groups] = await Promise.all([upcomingMatches(), groupStandings()]);
-  json(res, 200, { updatedAt: new Date().toISOString(), upcoming, groups });
+async function apiOverview(res, competitionId) {
+  const calendar = await calendarMatches(60_000);
+  const competitions = competitionList(calendar.Results);
+  const selected = competitions.find((competition) => competition.id === competitionId);
+  const [upcoming, groups] = await Promise.all([
+    upcomingMatches(calendar, competitionId),
+    groupStandings(selected),
+  ]);
+  json(res, 200, { updatedAt: new Date().toISOString(), competitions, upcoming, groups });
 }
 
 async function apiTimeline(res, matchId) {
@@ -255,12 +292,15 @@ async function staticFile(res, pathname) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  const competitionId = /^[a-zA-Z0-9-]+$/.test(url.searchParams.get("competitionId") || "")
+    ? url.searchParams.get("competitionId")
+    : DEFAULT_COMPETITION_ID;
   try {
     if (url.pathname === "/api/health") {
       return json(res, 200, { status: "ok", time: new Date().toISOString() });
     }
-    if (url.pathname === "/api/matches") return await apiMatches(res);
-    if (url.pathname === "/api/overview") return await apiOverview(res);
+    if (url.pathname === "/api/matches") return await apiMatches(res, competitionId);
+    if (url.pathname === "/api/overview") return await apiOverview(res, competitionId);
     if (url.pathname.startsWith("/api/timeline/")) {
       return await apiTimeline(res, url.pathname.split("/").pop());
     }

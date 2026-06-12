@@ -4,6 +4,8 @@ const state = {
   timeline: [],
   upcoming: [],
   groups: [],
+  competitions: [],
+  competitionId: localStorage.getItem("competitionId") || "17",
   timer: null,
   countdownTimer: null,
   blogExpanded: false,
@@ -26,6 +28,7 @@ const elements = {
   groups: document.querySelector("#groups"),
   feedLayout: document.querySelector("#feed-layout"),
   timelineToggle: document.querySelector("#timeline-toggle"),
+  competitionSelect: document.querySelector("#competition-select"),
 };
 
 function escapeHtml(value = "") {
@@ -154,6 +157,8 @@ function renderOverview() {
     : `<p class="notice">No more matches scheduled today.</p>`;
 
   elements.groups.innerHTML = state.groups
+    .length
+    ? state.groups
     .map((group) => `
       <article class="group-table">
         <h3>${escapeHtml(group.name)}</h3>
@@ -164,8 +169,15 @@ function renderOverview() {
             <span>${team.played}</span><span>${team.difference}</span><strong>${team.points}</strong>
           </div>`).join("")}
       </article>`)
-    .join("");
+    .join("")
+    : `<p class="notice">Standings are not available for this league.</p>`;
   updateCountdowns();
+}
+
+function renderCompetitionSelect() {
+  elements.competitionSelect.innerHTML = state.competitions
+    .map((competition) => `<option value="${escapeHtml(competition.id)}" ${competition.id === state.competitionId ? "selected" : ""}>${escapeHtml(competition.name)}</option>`)
+    .join("");
 }
 
 function updateCountdowns() {
@@ -224,18 +236,33 @@ elements.timelineToggle.addEventListener("click", () => {
   }
 });
 
+elements.competitionSelect.addEventListener("change", () => {
+  state.competitionId = elements.competitionSelect.value;
+  localStorage.setItem("competitionId", state.competitionId);
+  state.selectedId = null;
+  state.timeline = [];
+  refresh();
+});
+
 async function refresh() {
   elements.refreshLabel.textContent = "Refreshing FIFA data";
   try {
+    const query = `?competitionId=${encodeURIComponent(state.competitionId)}`;
     const [matchResponse, overviewResponse] = await Promise.all([
-      fetch("/api/matches"),
-      fetch("/api/overview"),
+      fetch(`/api/matches${query}`),
+      fetch(`/api/overview${query}`),
     ]);
     if (!matchResponse.ok || !overviewResponse.ok) throw new Error("Match feed unavailable");
     const [data, overview] = await Promise.all([matchResponse.json(), overviewResponse.json()]);
     state.matches = data.matches;
     state.upcoming = overview.upcoming;
     state.groups = overview.groups;
+    state.competitions = overview.competitions;
+    if (!state.competitions.some((competition) => competition.id === state.competitionId)) {
+      state.competitionId = "17";
+      localStorage.setItem("competitionId", state.competitionId);
+    }
+    renderCompetitionSelect();
     renderOverview();
     elements.refreshLabel.textContent = `Updated ${new Date(data.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · every 5 min`;
 
