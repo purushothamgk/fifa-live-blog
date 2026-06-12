@@ -43,6 +43,15 @@ function teamImage(team) {
   return `<img src="${escapeHtml(team.flag.replace("{format}", "sq").replace("{size}", "2"))}" alt="" />`;
 }
 
+function coachCard(team) {
+  if (!team.coach) return `<span class="coach-card coach-missing">Coach TBC</span>`;
+  return `<span class="coach-card">
+    ${team.coach.picture ? `<img src="${escapeHtml(team.coach.picture)}" alt="" />` : ""}
+    <small>Coach</small>
+    <strong>${escapeHtml(team.coach.name)}</strong>
+  </span>`;
+}
+
 function statusText(match) {
   if (match.isLive) return `<span class="live-label">● Live ${escapeHtml(match.minute)}</span>`;
   return "Full time";
@@ -146,10 +155,15 @@ function renderOverview() {
     .map((match) => `
       <article class="upcoming-card">
         <div><span>${escapeHtml(match.group || match.stage)}</span><time>${new Date(match.date).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</time></div>
+        <p class="venue">⌖ ${escapeHtml([match.stadium, match.city].filter(Boolean).join(", ") || "Venue TBC")}</p>
         <div class="upcoming-teams">
           <span>${teamImage(match.home)} ${escapeHtml(match.home.name)}</span>
           <b>vs</b>
           <span>${teamImage(match.away)} ${escapeHtml(match.away.name)}</span>
+        </div>
+        <div class="upcoming-coaches">
+          ${coachCard(match.home)}
+          ${coachCard(match.away)}
         </div>
         <p class="kickoff-countdown" data-kickoff="${escapeHtml(match.date)}"></p>
       </article>`)

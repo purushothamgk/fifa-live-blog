@@ -46,6 +46,16 @@ function normalizeMatch(match, source = "calendar") {
   const home = match.HomeTeam || match.Home || {};
   const away = match.AwayTeam || match.Away || {};
   const period = Number(match.Period || 0);
+  const coach = (team) => {
+    const headCoach = team.Coaches?.find((item) => Number(item.Role) === 0) || team.Coaches?.[0];
+    return headCoach
+      ? {
+          id: String(headCoach.IdCoach || ""),
+          name: localized(headCoach.Alias, localized(headCoach.Name, "Coach")),
+          picture: headCoach.PictureUrl || "",
+        }
+      : null;
+  };
 
   return {
     id: String(match.IdMatch),
@@ -70,6 +80,7 @@ function normalizeMatch(match, source = "calendar") {
       abbreviation: home.Abbreviation || "",
       score: home.Score,
       flag: home.PictureUrl || "",
+      coach: coach(home),
     },
     away: {
       id: String(away.IdTeam || ""),
@@ -77,6 +88,7 @@ function normalizeMatch(match, source = "calendar") {
       abbreviation: away.Abbreviation || "",
       score: away.Score,
       flag: away.PictureUrl || "",
+      coach: coach(away),
     },
   };
 }
@@ -188,7 +200,7 @@ async function discoverMatches(competitionId) {
 }
 
 async function upcomingMatches(calendar, competitionId) {
-  return (calendar.Results || [])
+  const matches = (calendar.Results || [])
     .filter(
       (match) =>
         String(match.IdCompetition) === competitionId &&
@@ -196,8 +208,29 @@ async function upcomingMatches(calendar, competitionId) {
         Date.parse(match.Date) > Date.now(),
     )
     .sort((a, b) => Date.parse(a.Date) - Date.parse(b.Date))
-    .slice(0, 8)
-    .map((match) => normalizeMatch(match, "upcoming"));
+    .slice(0, 8);
+
+  const details = [];
+  for (let index = 0; index < matches.length; index += 4) {
+    const batch = matches.slice(index, index + 4);
+    const results = await Promise.allSettled(
+      batch.map((match) =>
+        matchDetails({
+          competitionId: String(match.IdCompetition),
+          seasonId: String(match.IdSeason),
+          stageId: String(match.IdStage),
+          matchId: String(match.IdMatch),
+        }),
+      ),
+    );
+    details.push(
+      ...results.map((result, resultIndex) =>
+        result.status === "fulfilled" ? result.value : batch[resultIndex],
+      ),
+    );
+  }
+
+  return details.map((match) => normalizeMatch(match, "upcoming"));
 }
 
 async function groupStandings(competition) {

@@ -329,6 +329,12 @@ h1 em {
 .upcoming-card { background: var(--card); border: 1px solid var(--line); padding: 20px; }
 .upcoming-card div { color: var(--muted); display: flex; font: 9px "DM Mono", monospace; justify-content: space-between; text-transform: uppercase; }
 .upcoming-card b { color: var(--live); font: 9px "DM Mono", monospace; margin: 0 4px; text-transform: uppercase; }
+.upcoming-card .venue {
+  color: var(--green);
+  font: 500 9px/1.4 "DM Mono", monospace;
+  margin: 12px 0 0;
+  text-transform: uppercase;
+}
 .upcoming-card .upcoming-teams {
   align-items: flex-start;
   color: var(--ink);
@@ -342,6 +348,35 @@ h1 em {
 .upcoming-teams span { align-items: center; display: flex; gap: 9px; }
 .upcoming-teams img { height: 18px; object-fit: contain; width: 24px; }
 .upcoming-teams b { margin-left: 33px; }
+.upcoming-card .upcoming-coaches {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 18px;
+  text-transform: none;
+}
+.upcoming-card .coach-card {
+  align-items: center;
+  background: var(--paper);
+  color: var(--ink);
+  display: grid;
+  font-family: "Manrope", sans-serif;
+  gap: 1px 8px;
+  grid-template-columns: 34px 1fr;
+  justify-content: start;
+  min-width: 0;
+  padding: 8px;
+}
+.coach-card img {
+  border-radius: 50%;
+  grid-row: 1 / 3;
+  height: 34px;
+  object-fit: cover;
+  width: 34px;
+}
+.coach-card small { color: var(--muted); font: 8px "DM Mono", monospace; text-transform: uppercase; }
+.coach-card strong { font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upcoming-card .coach-missing { color: var(--muted); display: block; font: 9px "DM Mono", monospace; }
 .kickoff-countdown {
   color: var(--green);
   font: 500 10px "DM Mono", monospace;
