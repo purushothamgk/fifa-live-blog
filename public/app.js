@@ -29,6 +29,10 @@ const elements = {
   feedLayout: document.querySelector("#feed-layout"),
   timelineToggle: document.querySelector("#timeline-toggle"),
   competitionSelect: document.querySelector("#competition-select"),
+  squadModal: document.querySelector("#squad-modal"),
+  squadModalTitle: document.querySelector("#squad-modal-title"),
+  squadModalContent: document.querySelector("#squad-modal-content"),
+  squadModalClose: document.querySelector("#squad-modal-close"),
 };
 
 function escapeHtml(value = "") {
@@ -44,10 +48,15 @@ function teamImage(team) {
 }
 
 function coachCard(team) {
-  if (!team.coach) return `<span class="coach-card coach-missing">Coach TBC</span>`;
+  const teamLabel = `<span class="coach-team">${teamImage(team)} ${escapeHtml(team.abbreviation || team.name)}</span>`;
+  if (!team.coach) return `<span class="coach-card coach-missing">${teamLabel}<strong>Coach TBC</strong></span>`;
+  const portrait = team.coach.picture
+    ? `${team.coach.picture}?io=transform:fill,width:160,height:160`
+    : "";
   return `<span class="coach-card">
-    ${team.coach.picture ? `<img src="${escapeHtml(team.coach.picture)}" alt="" />` : ""}
-    <small>Coach</small>
+    ${portrait ? `<img src="${escapeHtml(portrait)}" alt="${escapeHtml(team.coach.name)}" />` : ""}
+    ${portrait ? `<img class="coach-preview" src="${escapeHtml(portrait)}" alt="${escapeHtml(team.coach.name)}" />` : ""}
+    ${teamLabel}
     <strong>${escapeHtml(team.coach.name)}</strong>
   </span>`;
 }
@@ -165,6 +174,7 @@ function renderOverview() {
           ${coachCard(match.home)}
           ${coachCard(match.away)}
         </div>
+        <button class="squad-toggle" data-match-id="${escapeHtml(match.id)}" type="button">View team members ↓</button>
         <p class="kickoff-countdown" data-kickoff="${escapeHtml(match.date)}"></p>
       </article>`)
     .join("")
@@ -185,7 +195,51 @@ function renderOverview() {
       </article>`)
     .join("")
     : `<p class="notice">Standings are not available for this league.</p>`;
+  elements.upcoming.querySelectorAll(".squad-toggle").forEach((button) => {
+    button.addEventListener("click", () => toggleSquads(button));
+  });
   updateCountdowns();
+}
+
+function renderSquad(team, squad) {
+  return `<section class="squad-team">
+    <h4>${teamImage(team)} ${escapeHtml(team.name)}</h4>
+    <div class="player-grid">${squad.players.length
+      ? squad.players.map((player) => {
+          const portrait = player.picture
+            ? `${player.picture}?io=transform:fill,width:120,height:120`
+            : "";
+          return `<span class="player-card">
+            ${portrait ? `<img src="${escapeHtml(portrait)}" alt="${escapeHtml(player.name)}" />` : `<i>${escapeHtml(player.shirtNumber ?? "–")}</i>`}
+            <small>${escapeHtml(player.position)}</small>
+            <strong>${escapeHtml(player.name)}</strong>
+          </span>`;
+        }).join("")
+      : `<p>Squad not announced.</p>`}</div>
+  </section>`;
+}
+
+async function toggleSquads(button) {
+  const match = state.upcoming.find((item) => item.id === button.dataset.matchId);
+  if (!match) return;
+  elements.squadModalTitle.textContent = `${match.home.name} vs ${match.away.name}`;
+  elements.squadModalContent.textContent = "Loading team members...";
+  elements.squadModal.showModal();
+  try {
+    const query = `competitionId=${encodeURIComponent(match.competitionId)}&seasonId=${encodeURIComponent(match.seasonId)}`;
+    const responses = await Promise.all([
+      fetch(`/api/squad/${encodeURIComponent(match.home.id)}?${query}`),
+      fetch(`/api/squad/${encodeURIComponent(match.away.id)}?${query}`),
+    ]);
+    const squads = await Promise.all(responses.map((response) => {
+      if (!response.ok) throw new Error("Squad unavailable");
+      return response.json();
+    }));
+    elements.squadModalContent.innerHTML =
+      renderSquad(match.home, squads[0]) + renderSquad(match.away, squads[1]);
+  } catch (error) {
+    elements.squadModalContent.textContent = error.message;
+  }
 }
 
 function renderCompetitionSelect() {
@@ -256,6 +310,11 @@ elements.competitionSelect.addEventListener("change", () => {
   state.selectedId = null;
   state.timeline = [];
   refresh();
+});
+
+elements.squadModalClose.addEventListener("click", () => elements.squadModal.close());
+elements.squadModal.addEventListener("click", (event) => {
+  if (event.target === elements.squadModal) elements.squadModal.close();
 });
 
 async function refresh() {

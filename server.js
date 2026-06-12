@@ -294,6 +294,24 @@ async function apiTimeline(res, matchId) {
   json(res, 200, { matchId, updatedAt: new Date().toISOString(), events });
 }
 
+async function apiSquad(res, teamId, competitionId, seasonId) {
+  if (![teamId, competitionId, seasonId].every((value) => /^[a-zA-Z0-9-]+$/.test(value || ""))) {
+    return json(res, 400, { error: "Invalid squad request" });
+  }
+  const data = await fifa(
+    `/teams/${teamId}/squad?idCompetition=${competitionId}&idSeason=${seasonId}&language=en`,
+    5 * 60_000,
+  );
+  const players = (data.Players || []).map((player) => ({
+    id: String(player.IdPlayer),
+    name: localized(player.PlayerName, localized(player.ShortName, "Player")),
+    shirtNumber: player.JerseyNum,
+    position: localized(player.PositionLocalized, "Player"),
+    picture: player.PlayerPicture?.PictureUrl || player.PictureUrl || "",
+  }));
+  json(res, 200, { teamId, team: localized(data.TeamName, "Team"), players });
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
@@ -336,6 +354,14 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/overview") return await apiOverview(res, competitionId);
     if (url.pathname.startsWith("/api/timeline/")) {
       return await apiTimeline(res, url.pathname.split("/").pop());
+    }
+    if (url.pathname.startsWith("/api/squad/")) {
+      return await apiSquad(
+        res,
+        url.pathname.split("/").pop(),
+        url.searchParams.get("competitionId"),
+        url.searchParams.get("seasonId"),
+      );
     }
     if (await staticFile(res, url.pathname)) return;
     json(res, 404, { error: "Not found" });
