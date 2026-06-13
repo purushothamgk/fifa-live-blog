@@ -129,6 +129,7 @@ GET /api/timeline/400021441
       "title": "Goal!",
       "description": "H G OH (Korea Republic) scores!!",
       "isGoal": true,
+      "isOwnGoal": false,
       "scorer": "H G OH",
       "homeGoals": 2,
       "awayGoals": 1
@@ -141,6 +142,8 @@ GET /api/timeline/400021441
 
 - Use `isGoal` to identify goals. Do not search the title for the word `Goal`,
   because FIFA also returns events named `Attempt at Goal`.
+- For own goals, `isOwnGoal` is `true` and `teamId` identifies the defending
+  player and team; attribute the goal to the opponent.
 - For a goal summary, display `minute`, `scorer`, `homeGoals`, and `awayGoals`.
 - `teamId`, `playerId`, and `scorer` can be `null`.
 

@@ -96,7 +96,8 @@ function normalizeMatch(match, source = "calendar") {
 function normalizeEvent(event) {
   const title = localized(event.TypeLocalized, "Match update");
   const description = localized(event.EventDescription);
-  const isGoal = Number(event.Type) === 0 || /^goal!?$/i.test(title);
+  const isOwnGoal = Number(event.Type) === 34 || /^own goal$/i.test(title);
+  const isGoal = Number(event.Type) === 0 || /^goal!?$/i.test(title) || isOwnGoal;
   const scorerMatch = isGoal
     ? description.match(/^(.+?)\s+\([^)]*\)\s+scores/i)
     : null;
@@ -112,6 +113,7 @@ function normalizeEvent(event) {
     title,
     description,
     isGoal,
+    isOwnGoal,
     scorer: scorerMatch?.[1] || null,
     homeGoals: event.HomeGoals,
     awayGoals: event.AwayGoals,

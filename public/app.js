@@ -103,10 +103,14 @@ function renderMatches() {
 function renderScoreboard(match) {
   const location = [match.stadium, match.city].filter(Boolean).join(" · ");
   const goals = state.timeline.filter((event) => event.isGoal).slice().reverse();
-  const homeGoals = goals.filter((goal) => goal.teamId === match.home.id);
-  const awayGoals = goals.filter((goal) => goal.teamId === match.away.id);
+  const homeGoals = goals.filter((goal) =>
+    goal.isOwnGoal ? goal.teamId === match.away.id : goal.teamId === match.home.id,
+  );
+  const awayGoals = goals.filter((goal) =>
+    goal.isOwnGoal ? goal.teamId === match.home.id : goal.teamId === match.away.id,
+  );
   const goalRows = (teamGoals) => teamGoals.length
-    ? teamGoals.map((goal) => `<span>⚽ ${escapeHtml(goal.scorer || "Goal")} <b>${escapeHtml(goal.minute)}</b></span>`).join("")
+    ? teamGoals.map((goal) => `<span>⚽ ${escapeHtml(goal.scorer || "Goal")}${goal.isOwnGoal ? " (OG)" : ""} <b>${escapeHtml(goal.minute)}</b></span>`).join("")
     : "<span class=\"no-goals\">No goals</span>";
   elements.scoreboard.innerHTML = `
     <div class="score-meta">${escapeHtml(match.competition)} · ${escapeHtml(match.stage || match.group)}${location ? ` · ${escapeHtml(location)}` : ""}</div>
