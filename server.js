@@ -158,14 +158,7 @@ async function discoverMatches(competitionId) {
   const now = Date.now();
   const refs = (calendar.Results || [])
     .filter((match) => String(match.IdCompetition) === competitionId)
-    .filter((match) => {
-      const kickoff = Date.parse(match.Date);
-      return (
-        match.MatchStatus !== 1 ||
-        (kickoff > now - 6 * 60 * 60 * 1000 &&
-          kickoff < now + 20 * 60 * 1000)
-      );
-    })
+    .filter((match) => Number(match.MatchStatus) !== 1)
     .map((match) => ({
       competitionId: String(match.IdCompetition),
       seasonId: String(match.IdSeason),
@@ -193,10 +186,10 @@ async function discoverMatches(competitionId) {
     .filter(
       (match) =>
         match.isLive ||
-        Date.parse(match.date) > now - 6 * 60 * 60 * 1000 ||
-        SEED_MATCHES.some((seed) => seed.matchId === match.id),
+        (match.status !== 1 && Date.parse(match.date) <= now),
     )
-    .sort((a, b) => Number(b.isLive) - Number(a.isLive) || Date.parse(b.date) - Date.parse(a.date));
+    .sort((a, b) => Number(b.isLive) - Number(a.isLive) || Date.parse(b.date) - Date.parse(a.date))
+    .slice(0, 2);
 }
 
 async function upcomingMatches(calendar, competitionId) {

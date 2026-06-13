@@ -28,8 +28,8 @@ Content-Type: application/json; charset=utf-8
 
 ## GET `/api/matches`
 
-Returns active matches plus configured recent fallback matches. Active matches
-are returned first.
+Returns at most two live or recently completed matches. Live matches are
+returned first, followed by the most recent completed matches.
 
 ### Response
 
